@@ -1,0 +1,1162 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WASI GROUP — Suivi Chantiers</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap');
+
+  :root {
+    --blue: #1A6EA8;
+    --blue-dark: #145a8c;
+    --blue-light: #e8f2fa;
+    --green: #1E8449;
+    --green-dark: #176038;
+    --green-light: #e8f5ec;
+    --orange: #E67E22;
+    --red: #C0392B;
+    --red-light: #fdf0ee;
+    --dark: #1a2332;
+    --gray: #6b7280;
+    --gray-light: #f4f6f8;
+    --white: #ffffff;
+    --border: #e2e8f0;
+    --shadow: 0 2px 12px rgba(26,46,74,0.10);
+    --shadow-lg: 0 8px 32px rgba(26,46,74,0.16);
+    --radius: 12px;
+    --radius-sm: 8px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Inter', sans-serif;
+    background: #f0f4f8;
+    color: var(--dark);
+    min-height: 100vh;
+  }
+
+  /* ── HEADER ── */
+  .app-header {
+    background: linear-gradient(135deg, var(--blue) 0%, var(--blue-dark) 100%);
+    color: white;
+    padding: 0 20px;
+    height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 2px 16px rgba(26,110,168,0.3);
+  }
+  .app-header .logo {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+  }
+  .app-header .logo span { color: #7ecfff; }
+  .header-right { display: flex; align-items: center; gap: 12px; }
+  .user-badge {
+    background: rgba(255,255,255,0.15);
+    border: 1px solid rgba(255,255,255,0.25);
+    border-radius: 20px;
+    padding: 4px 12px;
+    font-size: 13px;
+    font-weight: 500;
+  }
+  .btn-logout {
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.2);
+    color: white;
+    padding: 6px 14px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 13px;
+    font-family: 'Inter', sans-serif;
+    transition: background 0.2s;
+  }
+  .btn-logout:hover { background: rgba(255,255,255,0.2); }
+
+  /* ── SCREENS ── */
+  .screen { display: none; }
+  .screen.active { display: block; }
+
+  /* ── LOGIN ── */
+  .login-wrap {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(160deg, #0f2744 0%, #1A6EA8 60%, #1E8449 100%);
+    padding: 20px;
+  }
+  .login-card {
+    background: white;
+    border-radius: 20px;
+    padding: 40px 36px;
+    width: 100%;
+    max-width: 400px;
+    box-shadow: var(--shadow-lg);
+  }
+  .login-logo {
+    text-align: center;
+    margin-bottom: 28px;
+  }
+  .login-logo .brand {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--blue);
+    letter-spacing: -1px;
+  }
+  .login-logo .brand span { color: var(--green); }
+  .login-logo .sub {
+    font-size: 12px;
+    color: var(--gray);
+    margin-top: 4px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  .login-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--dark);
+    margin-bottom: 20px;
+    text-align: center;
+  }
+  .role-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+  .role-btn {
+    border: 2px solid var(--border);
+    background: var(--gray-light);
+    border-radius: var(--radius-sm);
+    padding: 14px 8px;
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.2s;
+    font-family: 'Inter', sans-serif;
+  }
+  .role-btn:hover { border-color: var(--blue); background: var(--blue-light); }
+  .role-btn.selected { border-color: var(--blue); background: var(--blue-light); }
+  .role-btn .emoji { font-size: 22px; display: block; margin-bottom: 6px; }
+  .role-btn .name { font-size: 13px; font-weight: 600; color: var(--dark); }
+  .role-btn .site { font-size: 11px; color: var(--gray); margin-top: 2px; }
+  .role-btn.patron { border-color: var(--border); }
+  .role-btn.patron.selected { border-color: var(--green); background: var(--green-light); }
+
+  .pin-group { margin-bottom: 16px; display: none; }
+  .pin-group label { font-size: 13px; font-weight: 500; color: var(--gray); margin-bottom: 6px; display: block; }
+  .pin-input {
+    width: 100%;
+    padding: 12px 16px;
+    border: 2px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-size: 20px;
+    letter-spacing: 8px;
+    text-align: center;
+    font-family: 'Inter', sans-serif;
+    outline: none;
+    transition: border 0.2s;
+  }
+  .pin-input:focus { border-color: var(--blue); }
+
+  .btn-primary {
+    width: 100%;
+    background: linear-gradient(135deg, var(--blue), var(--blue-dark));
+    color: white;
+    border: none;
+    border-radius: var(--radius-sm);
+    padding: 14px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: 'Inter', sans-serif;
+    transition: opacity 0.2s, transform 0.1s;
+    margin-top: 4px;
+  }
+  .btn-primary:hover { opacity: 0.92; }
+  .btn-primary:active { transform: scale(0.98); }
+  .btn-primary.green { background: linear-gradient(135deg, var(--green), var(--green-dark)); }
+
+  .error-msg {
+    color: var(--red);
+    font-size: 13px;
+    text-align: center;
+    margin-top: 10px;
+    display: none;
+  }
+
+  /* ── MAIN LAYOUT ── */
+  .main-layout {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 20px 16px 40px;
+  }
+
+  /* ── TABS ── */
+  .tabs {
+    display: flex;
+    gap: 6px;
+    background: white;
+    border-radius: var(--radius);
+    padding: 6px;
+    margin-bottom: 20px;
+    box-shadow: var(--shadow);
+  }
+  .tab-btn {
+    flex: 1;
+    padding: 10px;
+    border: none;
+    background: transparent;
+    border-radius: var(--radius-sm);
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--gray);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .tab-btn.active {
+    background: var(--blue);
+    color: white;
+    font-weight: 600;
+  }
+
+  /* ── CARDS ── */
+  .card {
+    background: white;
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 20px;
+    margin-bottom: 16px;
+  }
+  .card-title {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--dark);
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .card-title .pill {
+    font-family: 'Inter', sans-serif;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 20px;
+    background: var(--blue-light);
+    color: var(--blue);
+  }
+  .card-title .pill.green { background: var(--green-light); color: var(--green); }
+
+  /* ── KPI GRID ── */
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  .kpi-card {
+    background: white;
+    border-radius: var(--radius);
+    padding: 16px;
+    box-shadow: var(--shadow);
+    border-left: 4px solid var(--blue);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .kpi-card.green { border-left-color: var(--green); }
+  .kpi-card.orange { border-left-color: var(--orange); }
+  .kpi-card.red { border-left-color: var(--red); }
+  .kpi-label { font-size: 11px; color: var(--gray); font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; }
+  .kpi-value { font-family: 'Space Grotesk', sans-serif; font-size: 28px; font-weight: 700; color: var(--dark); }
+  .kpi-sub { font-size: 11px; color: var(--gray); }
+
+  /* ── FORM ── */
+  .form-section {
+    border-left: 3px solid var(--blue);
+    padding-left: 14px;
+    margin-bottom: 22px;
+  }
+  .form-section.green { border-left-color: var(--green); }
+  .form-section.orange { border-left-color: var(--orange); }
+  .form-section.red { border-left-color: var(--red); }
+  .section-label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--blue);
+    margin-bottom: 12px;
+  }
+  .form-section.green .section-label { color: var(--green); }
+  .form-section.orange .section-label { color: var(--orange); }
+  .form-section.red .section-label { color: var(--red); }
+
+  .field { margin-bottom: 14px; }
+  .field label {
+    display: block;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--dark);
+    margin-bottom: 6px;
+  }
+  .field label .req { color: var(--red); margin-left: 2px; }
+  .field input[type=text],
+  .field input[type=number],
+  .field input[type=time],
+  .field input[type=date],
+  .field select,
+  .field textarea {
+    width: 100%;
+    padding: 11px 14px;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-size: 14px;
+    font-family: 'Inter', sans-serif;
+    color: var(--dark);
+    background: white;
+    outline: none;
+    transition: border 0.2s;
+    -webkit-appearance: none;
+  }
+  .field input:focus,
+  .field select:focus,
+  .field textarea:focus { border-color: var(--blue); }
+  .field textarea { resize: vertical; min-height: 80px; }
+
+  .check-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .check-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 13px;
+    background: var(--gray-light);
+  }
+  .check-item input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--blue); }
+  .check-item:has(input:checked) { border-color: var(--blue); background: var(--blue-light); font-weight: 500; }
+
+  .radio-group { display: flex; flex-direction: column; gap: 8px; }
+  .radio-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    font-size: 13px;
+    background: var(--gray-light);
+    transition: all 0.2s;
+  }
+  .radio-item input[type=radio] { width: 16px; height: 16px; accent-color: var(--blue); }
+  .radio-item:has(input:checked) { border-color: var(--blue); background: var(--blue-light); font-weight: 500; }
+
+  .range-wrap { display: flex; align-items: center; gap: 12px; }
+  .range-wrap input[type=range] { flex: 1; accent-color: var(--blue); }
+  .range-val {
+    min-width: 44px;
+    text-align: center;
+    font-weight: 700;
+    font-size: 16px;
+    color: var(--blue);
+    background: var(--blue-light);
+    border-radius: 6px;
+    padding: 4px 8px;
+  }
+
+  /* ── RAPPORTS LIST ── */
+  .rapport-item {
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 14px;
+    margin-bottom: 10px;
+    background: var(--gray-light);
+    transition: box-shadow 0.2s;
+  }
+  .rapport-item:hover { box-shadow: var(--shadow); background: white; }
+  .rapport-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 8px;
+  }
+  .rapport-author { font-weight: 600; font-size: 14px; }
+  .rapport-date { font-size: 12px; color: var(--gray); }
+  .rapport-chantier {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 20px;
+    background: var(--blue-light);
+    color: var(--blue);
+  }
+  .rapport-chantier.douala { background: var(--green-light); color: var(--green); }
+  .rapport-detail { font-size: 13px; color: var(--gray); margin-top: 6px; line-height: 1.5; }
+  .rapport-badges { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+  .badge {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 20px;
+  }
+  .badge.ok { background: #e8f5ec; color: var(--green); }
+  .badge.warn { background: #fff3e0; color: var(--orange); }
+  .badge.danger { background: var(--red-light); color: var(--red); }
+
+  /* ── CHANTIER STATUS ── */
+  .chantier-status {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  .chantier-card {
+    border-radius: var(--radius);
+    padding: 16px;
+    box-shadow: var(--shadow);
+  }
+  .chantier-card.yaounde { background: linear-gradient(135deg, var(--blue) 0%, var(--blue-dark) 100%); color: white; }
+  .chantier-card.douala { background: linear-gradient(135deg, var(--green) 0%, var(--green-dark) 100%); color: white; }
+  .chantier-name { font-family: 'Space Grotesk', sans-serif; font-size: 14px; font-weight: 700; margin-bottom: 4px; }
+  .chantier-loc { font-size: 11px; opacity: 0.8; margin-bottom: 12px; }
+  .chantier-team { font-size: 12px; opacity: 0.9; }
+  .progress-bar-wrap { margin-top: 10px; }
+  .progress-label { font-size: 11px; opacity: 0.8; margin-bottom: 4px; display: flex; justify-content: space-between; }
+  .progress-bar { height: 6px; background: rgba(255,255,255,0.25); border-radius: 3px; overflow: hidden; }
+  .progress-fill { height: 100%; background: rgba(255,255,255,0.9); border-radius: 3px; transition: width 0.5s; }
+
+  /* ── SUCCESS ── */
+  .success-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 200;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  .success-overlay.show { display: flex; }
+  .success-box {
+    background: white;
+    border-radius: 20px;
+    padding: 36px 28px;
+    text-align: center;
+    max-width: 340px;
+    width: 100%;
+    box-shadow: var(--shadow-lg);
+  }
+  .success-icon { font-size: 56px; margin-bottom: 16px; }
+  .success-title { font-family: 'Space Grotesk', sans-serif; font-size: 20px; font-weight: 700; color: var(--dark); margin-bottom: 8px; }
+  .success-msg { font-size: 14px; color: var(--gray); line-height: 1.6; margin-bottom: 24px; }
+
+  /* ── ALERT BANNER ── */
+  .alert-banner {
+    background: var(--red-light);
+    border: 1.5px solid #f5c6c2;
+    border-radius: var(--radius-sm);
+    padding: 12px 14px;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    font-size: 13px;
+    color: var(--red);
+  }
+
+  /* ── SYNC STATUS ── */
+  .sync-bar {
+    background: white;
+    border-radius: var(--radius-sm);
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--gray);
+    margin-bottom: 16px;
+    box-shadow: var(--shadow);
+  }
+  .sync-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); }
+  .sync-dot.offline { background: var(--orange); }
+
+  /* ── EMPTY STATE ── */
+  .empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--gray);
+  }
+  .empty-state .icon { font-size: 40px; margin-bottom: 12px; }
+  .empty-state p { font-size: 14px; line-height: 1.6; }
+
+  @media (max-width: 480px) {
+    .kpi-grid { grid-template-columns: 1fr 1fr; }
+    .chantier-status { grid-template-columns: 1fr; }
+    .check-grid { grid-template-columns: 1fr; }
+    .role-grid { grid-template-columns: 1fr 1fr; }
+    .main-layout { padding: 14px 12px 40px; }
+    .login-card { padding: 28px 20px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ══ LOGIN SCREEN ══ -->
+<div id="loginScreen" class="screen active">
+  <div class="login-wrap">
+    <div class="login-card">
+      <div class="login-logo">
+        <div class="brand">WASI <span>GROUP</span></div>
+        <div class="sub">Plomberie & Hydraulique</div>
+      </div>
+      <div class="login-title">Qui êtes-vous ?</div>
+      <div class="role-grid">
+        <div class="role-btn" onclick="selectUser('Simon','Yaoundé','yaounde')">
+          <span class="emoji">👷</span>
+          <div class="name">Simon</div>
+          <div class="site">Olembé R+4</div>
+        </div>
+        <div class="role-btn" onclick="selectUser('Cédric','Yaoundé','yaounde')">
+          <span class="emoji">👷</span>
+          <div class="name">Cédric</div>
+          <div class="site">Olembé R+4</div>
+        </div>
+        <div class="role-btn" onclick="selectUser('Cyrille','Yaoundé','yaounde')">
+          <span class="emoji">👷</span>
+          <div class="name">Cyrille</div>
+          <div class="site">Olembé R+4</div>
+        </div>
+        <div class="role-btn" onclick="selectUser('Emma','Douala','douala')">
+          <span class="emoji">👷</span>
+          <div class="name">Emma</div>
+          <div class="site">PK17 R+6</div>
+        </div>
+        <div class="role-btn" onclick="selectUser('Cabrel','Douala','douala')">
+          <span class="emoji">👷</span>
+          <div class="name">Cabrel</div>
+          <div class="site">PK17 R+6</div>
+        </div>
+        <div class="role-btn" onclick="selectUser('Tchatcho','Douala','douala')">
+          <span class="emoji">👷</span>
+          <div class="name">Tchatcho</div>
+          <div class="site">PK17 R+6</div>
+        </div>
+        <div class="role-btn patron" style="grid-column:1/-1" onclick="selectUser('PATRON','Direction','patron')">
+          <span class="emoji">🏢</span>
+          <div class="name">Dr. DONGHO TSAYEM FABRICE</div>
+          <div class="site">Direction — WASI GROUP</div>
+        </div>
+      </div>
+      <div class="pin-group" id="pinGroup">
+        <label>Code PIN Direction</label>
+        <input type="password" class="pin-input" id="pinInput" maxlength="4" placeholder="••••" oninput="checkPin()">
+      </div>
+      <button class="btn-primary" id="loginBtn" onclick="doLogin()" style="display:none">Accéder →</button>
+      <div class="error-msg" id="errorMsg">Code PIN incorrect</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ APP SCREEN ══ -->
+<div id="appScreen" class="screen">
+  <header class="app-header">
+    <div class="logo">WASI <span>GROUP</span></div>
+    <div class="header-right">
+      <div class="user-badge" id="headerUser"></div>
+      <button class="btn-logout" onclick="logout()">Déconnexion</button>
+    </div>
+  </header>
+
+  <!-- VUE OUVRIER -->
+  <div id="ouvrierView" style="display:none">
+    <div class="main-layout">
+      <div class="sync-bar">
+        <div class="sync-dot" id="syncDot"></div>
+        <span id="syncText">Prêt à envoyer</span>
+      </div>
+
+      <div class="card">
+        <div class="card-title" id="formChantierTitle">📋 Rapport du jour</div>
+
+        <!-- Section 1 -->
+        <div class="form-section">
+          <div class="section-label">Informations générales</div>
+          <div class="field">
+            <label>Date du rapport <span class="req">*</span></label>
+            <input type="date" id="f_date">
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <div class="field">
+              <label>Heure début <span class="req">*</span></label>
+              <input type="time" id="f_debut">
+            </div>
+            <div class="field">
+              <label>Heure fin <span class="req">*</span></label>
+              <input type="time" id="f_fin">
+            </div>
+          </div>
+        </div>
+
+        <!-- Section 2 -->
+        <div class="form-section green">
+          <div class="section-label">Présence équipe</div>
+          <div class="field">
+            <label>Qui était présent ? <span class="req">*</span></label>
+            <div class="check-grid" id="presenceGrid"></div>
+          </div>
+          <div class="field">
+            <label>Nombre total d'ouvriers sur site</label>
+            <input type="number" id="f_nbouvriers" min="0" max="20" placeholder="0">
+          </div>
+        </div>
+
+        <!-- Section 3 -->
+        <div class="form-section">
+          <div class="section-label">Travaux du jour</div>
+          <div class="field">
+            <label>Niveau(x) travaillé(s) <span class="req">*</span></label>
+            <div class="check-grid" id="niveauxGrid"></div>
+          </div>
+          <div class="field">
+            <label>Description des travaux effectués <span class="req">*</span></label>
+            <textarea id="f_travaux" placeholder="Ex: Pose tuyaux PVC 100mm au RDC, raccordements WC N+2..."></textarea>
+          </div>
+          <div class="field">
+            <label>Taux d'avancement global : <strong id="avancementLabel">50%</strong></label>
+            <div class="range-wrap">
+              <span style="font-size:12px;color:var(--gray)">0%</span>
+              <input type="range" id="f_avancement" min="0" max="100" value="50" oninput="document.getElementById('avancementLabel').textContent=this.value+'%'">
+              <span style="font-size:12px;color:var(--gray)">100%</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Section 4 -->
+        <div class="form-section orange">
+          <div class="section-label">Matériaux</div>
+          <div class="field">
+            <label>Matériaux utilisés aujourd'hui</label>
+            <textarea id="f_materiaux" placeholder="Ex: 20 coudes 40mm, 5 tubes PVC 100mm..."></textarea>
+          </div>
+          <div class="field">
+            <label>Matériaux manquants / à commander</label>
+            <textarea id="f_manquants" placeholder="Ex: Coudes 50mm, joint torique..."></textarea>
+          </div>
+          <div class="field">
+            <label>Stock critique ? <span class="req">*</span></label>
+            <div class="radio-group">
+              <label class="radio-item"><input type="radio" name="stock" value="ok"> ✅ Non — stock suffisant</label>
+              <label class="radio-item"><input type="radio" name="stock" value="urgent"> 🔴 Oui — commande urgente</label>
+            </div>
+          </div>
+        </div>
+
+        <!-- Section 5 -->
+        <div class="form-section red">
+          <div class="section-label">Problèmes & Blocages</div>
+          <div class="field">
+            <label>Y a-t-il un problème aujourd'hui ? <span class="req">*</span></label>
+            <div class="radio-group">
+              <label class="radio-item"><input type="radio" name="probleme" value="non" onchange="toggleProbleme(false)"> ✅ Non — tout s'est bien passé</label>
+              <label class="radio-item"><input type="radio" name="probleme" value="oui" onchange="toggleProbleme(true)"> ⚠️ Oui — voir détails</label>
+            </div>
+          </div>
+          <div id="problemeDetail" style="display:none">
+            <div class="field">
+              <label>Description du problème</label>
+              <textarea id="f_probleme" placeholder="Décrivez le problème, sa cause, son impact..."></textarea>
+            </div>
+            <div class="field">
+              <label>Niveau d'urgence</label>
+              <div class="radio-group">
+                <label class="radio-item"><input type="radio" name="urgence" value="urgent"> 🔴 Urgent — intervention immédiate</label>
+                <label class="radio-item"><input type="radio" name="urgence" value="moyen"> 🟠 Moyen — à régler dans 24h</label>
+                <label class="radio-item"><input type="radio" name="urgence" value="faible"> 🟡 Faible — peut attendre</label>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Section 6 -->
+        <div class="form-section green">
+          <div class="section-label">Programme & Photos</div>
+          <div class="field">
+            <label>Programme prévu pour demain <span class="req">*</span></label>
+            <textarea id="f_demain" placeholder="Quelles tâches allez-vous réaliser demain ?"></textarea>
+          </div>
+          <div class="field">
+            <label>Lien photos du jour (WhatsApp / Drive)</label>
+            <input type="text" id="f_photos" placeholder="Coller le lien ici...">
+          </div>
+        </div>
+
+        <button class="btn-primary green" onclick="submitRapport()">✅ Envoyer le rapport</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- VUE PATRON -->
+  <div id="patronView" style="display:none">
+    <div class="main-layout">
+      <div class="sync-bar">
+        <div class="sync-dot" id="syncDotPatron"></div>
+        <span id="syncTextPatron">Connecté — données à jour</span>
+      </div>
+
+      <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab('dashboard')">📊 Tableau de bord</button>
+        <button class="tab-btn" onclick="switchTab('rapports')">📋 Rapports</button>
+        <button class="tab-btn" onclick="switchTab('alertes')">🚨 Alertes</button>
+      </div>
+
+      <!-- DASHBOARD TAB -->
+      <div id="tab_dashboard">
+        <div class="chantier-status">
+          <div class="chantier-card yaounde">
+            <div class="chantier-name">Olembé R+4</div>
+            <div class="chantier-loc">📍 Yaoundé</div>
+            <div class="chantier-team">👷 Simon · Cédric · Cyrille</div>
+            <div class="progress-bar-wrap">
+              <div class="progress-label"><span>Avancement</span><span id="progressOlmLabel">—</span></div>
+              <div class="progress-bar"><div class="progress-fill" id="progressOlm" style="width:0%"></div></div>
+            </div>
+          </div>
+          <div class="chantier-card douala">
+            <div class="chantier-name">PK17 R+6</div>
+            <div class="chantier-loc">📍 Douala</div>
+            <div class="chantier-team">👷 Emma · Cabrel · Tchatcho</div>
+            <div class="progress-bar-wrap">
+              <div class="progress-label"><span>Avancement</span><span id="progressPK17Label">—</span></div>
+              <div class="progress-bar"><div class="progress-fill" id="progressPK17" style="width:0%"></div></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="kpi-grid">
+          <div class="kpi-card">
+            <div class="kpi-label">Rapports reçus</div>
+            <div class="kpi-value" id="kpiRapports">0</div>
+            <div class="kpi-sub">Total cumulé</div>
+          </div>
+          <div class="kpi-card green">
+            <div class="kpi-label">Rapports aujourd'hui</div>
+            <div class="kpi-value" id="kpiAujourdhui">0</div>
+            <div class="kpi-sub">Sur 2 attendus</div>
+          </div>
+          <div class="kpi-card orange">
+            <div class="kpi-label">Stocks critiques</div>
+            <div class="kpi-value" id="kpiStocks">0</div>
+            <div class="kpi-sub">Commandes urgentes</div>
+          </div>
+          <div class="kpi-card red">
+            <div class="kpi-label">Problèmes signalés</div>
+            <div class="kpi-value" id="kpiProblemes">0</div>
+            <div class="kpi-sub">Non résolus</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">🕐 Derniers rapports reçus</div>
+          <div id="dernierRapports">
+            <div class="empty-state"><div class="icon">📭</div><p>Aucun rapport reçu pour l'instant.<br>L'équipe les envoie chaque soir avant 18h.</p></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RAPPORTS TAB -->
+      <div id="tab_rapports" style="display:none">
+        <div class="card">
+          <div class="card-title">📋 Tous les rapports <span class="pill" id="rapportCount">0</span></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px">
+            <select id="filterChantier" onchange="renderRapports()" style="padding:8px 12px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-family:Inter,sans-serif;font-size:13px">
+              <option value="">Tous les chantiers</option>
+              <option value="yaounde">Olembé R+4</option>
+              <option value="douala">PK17 R+6</option>
+            </select>
+            <select id="filterAuteur" onchange="renderRapports()" style="padding:8px 12px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-family:Inter,sans-serif;font-size:13px">
+              <option value="">Tous les ouvriers</option>
+              <option>Simon</option><option>Cédric</option><option>Cyrille</option>
+              <option>Emma</option><option>Cabrel</option><option>Tchatcho</option>
+            </select>
+          </div>
+          <div id="rapportsList"></div>
+        </div>
+      </div>
+
+      <!-- ALERTES TAB -->
+      <div id="tab_alertes" style="display:none">
+        <div class="card">
+          <div class="card-title">🚨 Alertes actives</div>
+          <div id="alertesList">
+            <div class="empty-state"><div class="icon">✅</div><p>Aucune alerte active.<br>Tous les chantiers sont en ordre.</p></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ SUCCESS OVERLAY ══ -->
+<div class="success-overlay" id="successOverlay">
+  <div class="success-box">
+    <div class="success-icon">✅</div>
+    <div class="success-title">Rapport envoyé !</div>
+    <div class="success-msg">Votre rapport journalier a été enregistré avec succès.<br><strong>WASI GROUP</strong> — Bonne fin de journée !</div>
+    <button class="btn-primary" onclick="closeSuccess()">Fermer</button>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════
+// ÉTAT APPLICATION
+// ══════════════════════════════
+const EQUIPE = {
+  Simon:  { chantier: 'Olembé R+4', site: 'yaounde', niveaux: ['RDC','N+1','N+2','N+3','N+4','Toiture','Extérieur'] },
+  Cédric: { chantier: 'Olembé R+4', site: 'yaounde', niveaux: ['RDC','N+1','N+2','N+3','N+4','Toiture','Extérieur'] },
+  Cyrille:{ chantier: 'Olembé R+4', site: 'yaounde', niveaux: ['RDC','N+1','N+2','N+3','N+4','Toiture','Extérieur'] },
+  Emma:   { chantier: 'PK17 R+6',   site: 'douala',  niveaux: ['RDC','N+1','N+2','N+3','N+4','N+5','N+6','Toiture','Extérieur'] },
+  Cabrel: { chantier: 'PK17 R+6',   site: 'douala',  niveaux: ['RDC','N+1','N+2','N+3','N+4','N+5','N+6','Toiture','Extérieur'] },
+  Tchatcho:{chantier: 'PK17 R+6',   site: 'douala',  niveaux: ['RDC','N+1','N+2','N+3','N+4','N+5','N+6','Toiture','Extérieur'] },
+};
+const PRESENCE_YAOUNDE = ['Simon','Cédric','Cyrille','Ouvrier temporaire'];
+const PRESENCE_DOUALA  = ['Emma','Cabrel','Tchatcho','Ouvrier temporaire'];
+const PIN_PATRON = '1234';
+
+let currentUser = null;
+let currentSite = null;
+let rapports = [];
+
+// ══════════════════════════════
+// PERSISTANCE LOCALE
+// ══════════════════════════════
+function saveLocal() {
+  try { localStorage.setItem('wasi_rapports', JSON.stringify(rapports)); } catch(e) {}
+}
+function loadLocal() {
+  try {
+    const d = localStorage.getItem('wasi_rapports');
+    if (d) rapports = JSON.parse(d);
+  } catch(e) {}
+}
+
+// ══════════════════════════════
+// LOGIN
+// ══════════════════════════════
+let selectedUser = null;
+let selectedSite = null;
+
+function selectUser(name, site, siteKey) {
+  selectedUser = name;
+  selectedSite = siteKey;
+  document.querySelectorAll('.role-btn').forEach(b => b.classList.remove('selected'));
+  event.currentTarget.classList.add('selected');
+
+  const pinGroup = document.getElementById('pinGroup');
+  const loginBtn = document.getElementById('loginBtn');
+
+  if (name === 'PATRON') {
+    pinGroup.style.display = 'block';
+    loginBtn.style.display = 'block';
+    loginBtn.textContent = 'Accéder au tableau de bord →';
+  } else {
+    pinGroup.style.display = 'none';
+    loginBtn.style.display = 'block';
+    loginBtn.textContent = 'Accéder au formulaire →';
+  }
+  document.getElementById('errorMsg').style.display = 'none';
+}
+
+function checkPin() {
+  document.getElementById('errorMsg').style.display = 'none';
+}
+
+function doLogin() {
+  if (!selectedUser) return;
+  if (selectedUser === 'PATRON') {
+    const pin = document.getElementById('pinInput').value;
+    if (pin !== PIN_PATRON) {
+      document.getElementById('errorMsg').style.display = 'block';
+      return;
+    }
+  }
+  currentUser = selectedUser;
+  currentSite = selectedSite;
+  loadLocal();
+  showApp();
+}
+
+function logout() {
+  currentUser = null;
+  currentSite = null;
+  selectedUser = null;
+  document.querySelectorAll('.role-btn').forEach(b => b.classList.remove('selected'));
+  document.getElementById('pinInput').value = '';
+  document.getElementById('pinGroup').style.display = 'none';
+  document.getElementById('loginBtn').style.display = 'none';
+  document.getElementById('errorMsg').style.display = 'none';
+  document.getElementById('loginScreen').classList.add('active');
+  document.getElementById('appScreen').classList.remove('active');
+}
+
+function showApp() {
+  document.getElementById('loginScreen').classList.remove('active');
+  document.getElementById('appScreen').classList.add('active');
+  document.getElementById('headerUser').textContent = currentUser === 'PATRON' ? '🏢 Direction' : `👷 ${currentUser}`;
+
+  if (currentUser === 'PATRON') {
+    document.getElementById('patronView').style.display = 'block';
+    document.getElementById('ouvrierView').style.display = 'none';
+    updateDashboard();
+  } else {
+    document.getElementById('patronView').style.display = 'none';
+    document.getElementById('ouvrierView').style.display = 'block';
+    setupForm();
+  }
+}
+
+// ══════════════════════════════
+// FORMULAIRE OUVRIER
+// ══════════════════════════════
+function setupForm() {
+  const info = EQUIPE[currentUser];
+  document.getElementById('formChantierTitle').innerHTML =
+    `📋 Rapport du jour — <span style="color:var(--blue)">${info.chantier}</span>`;
+
+  // Date aujourd'hui
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('f_date').value = today;
+
+  // Présence
+  const presenceList = info.site === 'yaounde' ? PRESENCE_YAOUNDE : PRESENCE_DOUALA;
+  const grid = document.getElementById('presenceGrid');
+  grid.innerHTML = presenceList.map(p => `
+    <label class="check-item">
+      <input type="checkbox" name="presence" value="${p}" ${p === currentUser ? 'checked' : ''}>
+      ${p}
+    </label>`).join('');
+
+  // Niveaux
+  const niveauxGrid = document.getElementById('niveauxGrid');
+  niveauxGrid.innerHTML = info.niveaux.map(n => `
+    <label class="check-item">
+      <input type="checkbox" name="niveaux" value="${n}">
+      ${n}
+    </label>`).join('');
+}
+
+function toggleProbleme(show) {
+  document.getElementById('problemeDetail').style.display = show ? 'block' : 'none';
+}
+
+function submitRapport() {
+  const date = document.getElementById('f_date').value;
+  const travaux = document.getElementById('f_travaux').value.trim();
+  const demain = document.getElementById('f_demain').value.trim();
+
+  if (!date || !travaux || !demain) {
+    alert('Veuillez remplir les champs obligatoires (*)');
+    return;
+  }
+
+  const presence = [...document.querySelectorAll('input[name=presence]:checked')].map(c => c.value);
+  const niveaux = [...document.querySelectorAll('input[name=niveaux]:checked')].map(c => c.value);
+  const stockRadio = document.querySelector('input[name=stock]:checked');
+  const problemeRadio = document.querySelector('input[name=probleme]:checked');
+  const urgenceRadio = document.querySelector('input[name=urgence]:checked');
+
+  const rapport = {
+    id: Date.now(),
+    auteur: currentUser,
+    site: currentSite,
+    chantier: EQUIPE[currentUser].chantier,
+    date,
+    heureDebut: document.getElementById('f_debut').value,
+    heureFin: document.getElementById('f_fin').value,
+    presence,
+    nbouvriers: document.getElementById('f_nbouvriers').value,
+    niveaux,
+    travaux,
+    avancement: document.getElementById('f_avancement').value,
+    materiaux: document.getElementById('f_materiaux').value,
+    manquants: document.getElementById('f_manquants').value,
+    stockCritique: stockRadio ? stockRadio.value : '',
+    aProbleme: problemeRadio ? problemeRadio.value : 'non',
+    problemeDesc: document.getElementById('f_probleme').value,
+    urgence: urgenceRadio ? urgenceRadio.value : '',
+    demain,
+    photos: document.getElementById('f_photos').value,
+    timestamp: new Date().toISOString(),
+  };
+
+  rapports.unshift(rapport);
+  saveLocal();
+
+  // Sync status
+  const dot = document.getElementById('syncDot');
+  const txt = document.getElementById('syncText');
+  dot.classList.add('offline');
+  txt.textContent = 'Enregistrement en cours...';
+  setTimeout(() => {
+    dot.classList.remove('offline');
+    txt.textContent = 'Rapport enregistré ✓';
+  }, 800);
+
+  document.getElementById('successOverlay').classList.add('show');
+}
+
+function closeSuccess() {
+  document.getElementById('successOverlay').classList.remove('show');
+  setupForm();
+  // Reset form
+  ['f_travaux','f_materiaux','f_manquants','f_probleme','f_demain','f_photos','f_nbouvriers'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  document.getElementById('f_avancement').value = 50;
+  document.getElementById('avancementLabel').textContent = '50%';
+  document.querySelectorAll('input[name=stock], input[name=probleme], input[name=urgence]').forEach(r => r.checked = false);
+  toggleProbleme(false);
+}
+
+// ══════════════════════════════
+// DASHBOARD PATRON
+// ══════════════════════════════
+function switchTab(tab) {
+  ['dashboard','rapports','alertes'].forEach(t => {
+    document.getElementById(`tab_${t}`).style.display = t === tab ? 'block' : 'none';
+  });
+  document.querySelectorAll('.tab-btn').forEach((b, i) => {
+    b.classList.toggle('active', ['dashboard','rapports','alertes'][i] === tab);
+  });
+  if (tab === 'rapports') renderRapports();
+  if (tab === 'alertes') renderAlertes();
+}
+
+function updateDashboard() {
+  const today = new Date().toISOString().split('T')[0];
+
+  const rapportsAujourdhui = rapports.filter(r => r.date === today);
+  const stockUrgent = rapports.filter(r => r.stockCritique === 'urgent').length;
+  const problemes = rapports.filter(r => r.aProbleme === 'oui').length;
+
+  document.getElementById('kpiRapports').textContent = rapports.length;
+  document.getElementById('kpiAujourdhui').textContent = rapportsAujourdhui.length;
+  document.getElementById('kpiStocks').textContent = stockUrgent;
+  document.getElementById('kpiProblemes').textContent = problemes;
+
+  // Progress bars
+  const olmRapports = rapports.filter(r => r.site === 'yaounde');
+  const pk17Rapports = rapports.filter(r => r.site === 'douala');
+
+  if (olmRapports.length > 0) {
+    const avg = Math.round(olmRapports.reduce((s, r) => s + parseInt(r.avancement||0), 0) / olmRapports.length);
+    document.getElementById('progressOlm').style.width = avg + '%';
+    document.getElementById('progressOlmLabel').textContent = avg + '%';
+  }
+  if (pk17Rapports.length > 0) {
+    const avg = Math.round(pk17Rapports.reduce((s, r) => s + parseInt(r.avancement||0), 0) / pk17Rapports.length);
+    document.getElementById('progressPK17').style.width = avg + '%';
+    document.getElementById('progressPK17Label').textContent = avg + '%';
+  }
+
+  // Derniers rapports
+  const container = document.getElementById('dernierRapports');
+  if (rapports.length === 0) {
+    container.innerHTML = `<div class="empty-state"><div class="icon">📭</div><p>Aucun rapport reçu pour l'instant.<br>L'équipe les envoie chaque soir avant 18h.</p></div>`;
+  } else {
+    container.innerHTML = rapports.slice(0, 4).map(r => rapportCard(r)).join('');
+  }
+}
+
+function rapportCard(r) {
+  const badges = [];
+  if (r.stockCritique === 'urgent') badges.push(`<span class="badge danger">🔴 Stock critique</span>`);
+  if (r.aProbleme === 'oui') {
+    const urgMap = {urgent:'danger', moyen:'warn', faible:'ok'};
+    badges.push(`<span class="badge ${urgMap[r.urgence]||'warn'}">⚠️ Problème signalé</span>`);
+  }
+  if (badges.length === 0) badges.push(`<span class="badge ok">✅ RAS</span>`);
+
+  return `
+  <div class="rapport-item">
+    <div class="rapport-header">
+      <div>
+        <div class="rapport-author">👷 ${r.auteur}</div>
+        <div class="rapport-date">${r.date} ${r.heureDebut ? '— ' + r.heureDebut : ''}</div>
+      </div>
+      <span class="rapport-chantier ${r.site === 'douala' ? 'douala' : ''}">${r.chantier}</span>
+    </div>
+    <div class="rapport-detail">
+      ${r.niveaux && r.niveaux.length ? `<strong>Niveaux :</strong> ${r.niveaux.join(', ')}<br>` : ''}
+      <strong>Avancement :</strong> ${r.avancement}%<br>
+      <strong>Travaux :</strong> ${r.travaux.substring(0, 120)}${r.travaux.length > 120 ? '...' : ''}
+    </div>
+    <div class="rapport-badges">${badges.join('')}</div>
+  </div>`;
+}
+
+function renderRapports() {
+  const filterC = document.getElementById('filterChantier').value;
+  const filterA = document.getElementById('filterAuteur').value;
+  let filtered = rapports;
+  if (filterC) filtered = filtered.filter(r => r.site === filterC);
+  if (filterA) filtered = filtered.filter(r => r.auteur === filterA);
+
+  document.getElementById('rapportCount').textContent = filtered.length;
+  const container = document.getElementById('rapportsList');
+  if (filtered.length === 0) {
+    container.innerHTML = `<div class="empty-state"><div class="icon">📭</div><p>Aucun rapport trouvé.</p></div>`;
+  } else {
+    container.innerHTML = filtered.map(r => rapportCard(r)).join('');
+  }
+}
+
+function renderAlertes() {
+  const alertes = rapports.filter(r => r.aProbleme === 'oui' || r.stockCritique === 'urgent');
+  const container = document.getElementById('alertesList');
+  if (alertes.length === 0) {
+    container.innerHTML = `<div class="empty-state"><div class="icon">✅</div><p>Aucune alerte active.<br>Tous les chantiers sont en ordre.</p></div>`;
+  } else {
+    container.innerHTML = alertes.map(r => {
+      let alertMsg = [];
+      if (r.stockCritique === 'urgent') alertMsg.push('🔴 Stock critique — commande urgente requise');
+      if (r.aProbleme === 'oui') alertMsg.push(`⚠️ ${r.problemeDesc || 'Problème signalé'}`);
+      return `
+      <div class="alert-banner" style="flex-direction:column;align-items:flex-start">
+        <div style="display:flex;justify-content:space-between;width:100%;margin-bottom:6px">
+          <strong>${r.auteur} — ${r.chantier}</strong>
+          <span style="font-size:11px">${r.date}</span>
+        </div>
+        ${alertMsg.map(m => `<div>${m}</div>`).join('')}
+      </div>`;
+    }).join('');
+  }
+}
+
+// ══════════════════════════════
+// INIT
+// ══════════════════════════════
+loadLocal();
+</script>
+</body>
+</html>

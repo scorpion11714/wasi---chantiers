@@ -1010,6 +1010,8 @@ function submitRapport() {
 
   rapports.unshift(rapport);
   saveLocal();
+  // Sauvegarde cloud
+  saveToFirebase(rapport);
 
   // Sync status
   const dot = document.getElementById('syncDot');
@@ -1153,9 +1155,74 @@ function renderAlertes() {
   }
 }
 
+
+// Sauvegarde Firebase
+async function saveToFirebase(rapport) {
+  if (window.firebaseReady && window.db) {
+    try {
+      const { collection, addDoc } = window.firestoreLib;
+      await addDoc(collection(window.db, "rapports"), rapport);
+      console.log("Rapport sauvegardé dans Firebase");
+      document.getElementById('syncDot').classList.remove('offline');
+      document.getElementById('syncText').textContent = '☁️ Synchronisé avec le cloud ✓';
+    } catch(e) {
+      console.error("Erreur Firebase:", e);
+      document.getElementById('syncText').textContent = '⚠️ Sauvegardé localement seulement';
+    }
+  }
+}
+
 // ══════════════════════════════
 // INIT
 // ══════════════════════════════
+loadLocal();
+</script>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getFirestore, collection, addDoc, getDocs, onSnapshot, query, orderBy } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyCks8L8CbbSY9Ih_AM4qligctvMRUv_0g",
+    authDomain: "wasi---chantiers.firebaseapp.com",
+    projectId: "wasi---chantiers",
+    storageBucket: "wasi---chantiers.firebasestorage.app",
+    messagingSenderId: "609878352624",
+    appId: "1:609878352624:web:1c15a19195S852ae89835",
+    measurementId: "G-FSB029TLZ7"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+
+  // Rendre db disponible globalement
+  window.db = db;
+  window.firestoreLib = { collection, addDoc, getDocs, onSnapshot, query, orderBy };
+  window.firebaseReady = true;
+  console.log("Firebase connecté !");
+
+  // Écouter les nouveaux rapports en temps réel
+  const q = query(collection(db, "rapports"), orderBy("timestamp", "desc"));
+  onSnapshot(q, (snapshot) => {
+    const newRapports = [];
+    snapshot.forEach((doc) => {
+      newRapports.push({ id: doc.id, ...doc.data() });
+    });
+    // Fusionner avec les données locales
+    window.rapports = newRapports;
+    // Mettre à jour le dashboard si patron connecté
+    if (window.currentUser === 'PATRON') {
+      if (typeof window.updateDashboard === 'function') window.updateDashboard();
+    }
+    console.log("Rapports synchronisés:", newRapports.length);
+  });
+</script>
+
+</body>
+</html>
+
+<!-- Firebase integration will be added via script injection -->
+
 loadLocal();
 </script>
 </body>

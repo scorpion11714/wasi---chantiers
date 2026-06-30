@@ -1389,7 +1389,7 @@ const PRESENCE_DOUALA  = ['Emma','Cabrel','Tchatcho','Ouvrier temporaire'];
 // Hash par défaut correspond à "1234" — À CHANGER : voir fonction changePin()
 // Pour générer un nouveau hash : utiliser la fonction sha256Hex('votre_pin') dans la console
 let PIN_PATRON_HASH = localStorage.getItem('wasi_pin_hash') || null;
-const PIN_PATRON_DEFAULT_HASH = '03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f'; // sha256("1234")
+const PIN_PATRON_DEFAULT_HASH = '03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4'; // sha256("1234")
 
 async function sha256Hex(text) {
   const enc = new TextEncoder().encode(text);
